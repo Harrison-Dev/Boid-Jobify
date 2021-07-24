@@ -6,7 +6,10 @@
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
 
-const int kBoidNum = 1000;
+#include "ftl/task_counter.h"
+#include "ftl/task_scheduler.h"
+
+const int kBoidNum = 2000;
 
 // Construct window using SFML
 Game::Game()
