@@ -10,6 +10,7 @@
 #include "ftl/task_scheduler.h"
 
 const int kBoidNum = 2000;
+const bool isJob = true;
 
 struct FlockBirdSet {
 	FlockBirdSet() {}

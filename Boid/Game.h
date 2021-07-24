@@ -25,7 +25,7 @@ private:
     float boidsSize;
     vector<sf::CircleShape> shapes;
 
-	void Update(ftl::TaskScheduler *scheduler, sf::Clock &clock, sf::Text &fpsText);
+	inline void Update(ftl::TaskScheduler *scheduler, sf::Clock &clock, sf::Text &fpsText);
 	void MainThreadFlocking();
 	void JobFlocking(ftl::TaskScheduler * scheduler);
 	void DrawBoid();
