@@ -25,11 +25,12 @@ private:
     float boidsSize;
     vector<sf::CircleShape> shapes;
 
-	inline void Update(ftl::TaskScheduler *scheduler, sf::Clock &clock, sf::Text &fpsText);
+	static inline void Update(Game* current, sf::RenderWindow* window,sf::Clock &clock, sf::Text &fpsText);
 	void MainThreadFlocking();
-	void JobFlocking(ftl::TaskScheduler * scheduler);
+	inline void JobFlocking(ftl::TaskScheduler * scheduler);
 	void DrawBoid();
     void HandleInput();
+	static void renderingThread(Game* currentInstance);
 
 public:
     Game();

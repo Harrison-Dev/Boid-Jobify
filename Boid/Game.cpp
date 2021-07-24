@@ -50,6 +50,27 @@ void Game::Run()
         shapes.push_back(shape);
     }
 	
+	// deactivate its OpenGL context
+	window.setActive(false);
+
+	// launch the rendering thread
+	sf::Thread thread(
+		&renderingThread, 
+		this);
+	thread.launch();
+
+	ftl::TaskScheduler taskScheduler;
+	taskScheduler.Init();
+    while (window.isOpen()) {
+		HandleInput();
+		JobFlocking(&taskScheduler);
+	}
+}
+
+void Game::renderingThread(Game* currentInstance)
+{
+	sf::RenderWindow* window = &(currentInstance->window);
+
 	// Load Font
 	sf::Font font;
 	auto s0 = "consola.ttf";
@@ -63,17 +84,16 @@ void Game::Run()
 	sf::Text fpsText("Frames per Second: ", font);
 	fpsText.setFillColor(sf::Color::Red);
 	fpsText.setCharacterSize(16);
-	//fpsText.setPosition(window_width - 230, 0);
 
 	// Clock for fps
 	sf::Clock fpsClock;
 
-	ftl::TaskScheduler taskScheduler;
-	taskScheduler.Init();
-
-    while (window.isOpen()) {
-        Update(&taskScheduler,fpsClock, fpsText);
-    }
+	// the rendering loop
+	while (window->isOpen())
+	{
+		// draw...
+		Update(currentInstance, window, fpsClock, fpsText);
+	}
 }
 
 void Game::HandleInput()
@@ -127,29 +147,29 @@ void Game::FlyBird(ftl::TaskScheduler * taskScheduler, void * arg)
 	flockSet->flock->flocking(flockSet->index);
 }
 
-void Game::Update(ftl::TaskScheduler * scheduler, sf::Clock &fpsClock, sf::Text &fpsText)
+void Game::Update(Game* current, sf::RenderWindow* window, sf::Clock &fpsClock, sf::Text &fpsText)
 {
-    window.clear();
-	HandleInput();
+    window->clear();
+	//current->HandleInput();
     
 	sf::Clock inFrameClock;
 
 	// Draws all of the Boids out, and applies functions that are needed to update.
-	DrawBoid();
+	current->DrawBoid();
 	float drawBoidTime = inFrameClock.restart().asSeconds();
 
     // Applies the three rules to each boid in the flock and changes them accordingly.
 
-	if(isJob)
-		JobFlocking(scheduler);
-	else
-		MainThreadFlocking();
+	//if(isJob)
+	//	JobFlocking(scheduler);
+	//else
+	//	MainThreadFlocking();
 
-	float flockTime = inFrameClock.restart().asSeconds();
+	//float flockTime = inFrameClock.restart().asSeconds();
 
-	DrawUI(fpsClock, fpsText, drawBoidTime, flockTime);
+	current->DrawUI(fpsClock, fpsText, drawBoidTime, 0);
 
-	window.display();
+	window->display();
 }
 
 void Game::MainThreadFlocking()
@@ -161,8 +181,6 @@ void Game::MainThreadFlocking()
 
 void Game::JobFlocking(ftl::TaskScheduler * scheduler)
 {
-	window.setActive(false);
-
 	ftl::Task tasks[kBoidNum];
 	FlockBirdSet flockSet[kBoidNum];
 
@@ -179,8 +197,6 @@ void Game::JobFlocking(ftl::TaskScheduler * scheduler)
 	ftl::TaskCounter counter(scheduler);
 	scheduler->AddTasks(kBoidNum, tasks, ftl::TaskPriority::Normal, &counter);
 	scheduler->WaitForCounter(&counter);
-
-	window.setActive(true);
 }
 
 void Game::DrawBoid()
