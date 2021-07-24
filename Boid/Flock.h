@@ -23,6 +23,7 @@ public:
     // Mutator Functions
     void addBoid(const Boid& b);
     void flocking();
+	void flocking(int i);
 private:
     vector<Boid> flock;  
 };

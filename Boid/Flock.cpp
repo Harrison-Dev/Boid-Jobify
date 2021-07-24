@@ -34,3 +34,8 @@ void Flock::flocking()
     for (int i = 0; i < flock.size(); i++)
         flock[i].run(flock);
 }
+
+void Flock::flocking(int i)
+{
+	flock[i].run(flock);
+}

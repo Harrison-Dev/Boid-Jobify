@@ -5,6 +5,9 @@
 #include "SFML/Window.hpp"
 #include "SFML/Graphics.hpp"
 
+#include "ftl/task_counter.h"
+#include "ftl/task_scheduler.h"
+
 #ifndef GAME_H
 #define GAME_H
 
@@ -22,7 +25,9 @@ private:
     float boidsSize;
     vector<sf::CircleShape> shapes;
 
-	void Update(sf::Clock &clock, sf::Text &fpsText);
+	void Update(ftl::TaskScheduler *scheduler, sf::Clock &clock, sf::Text &fpsText);
+	void MainThreadFlocking();
+	void JobFlocking(ftl::TaskScheduler * scheduler);
 	void DrawBoid();
     void HandleInput();
 
@@ -30,6 +35,7 @@ public:
     Game();
     void Run();
 	void DrawUI(sf::Clock &fpsClock, sf::Text &fpsText, float drawBoidTime, float flockTime);
+	static void FlyBird(ftl::TaskScheduler *taskScheduler, void *arg);
 };
 
 #endif

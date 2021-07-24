@@ -11,6 +11,12 @@
 
 const int kBoidNum = 2000;
 
+struct FlockBirdSet {
+	FlockBirdSet() {}
+	int32_t index;
+	Flock* flock;
+};
+
 // Construct window using SFML
 Game::Game()
 {
@@ -61,8 +67,11 @@ void Game::Run()
 	// Clock for fps
 	sf::Clock fpsClock;
 
+	ftl::TaskScheduler taskScheduler;
+	taskScheduler.Init();
+
     while (window.isOpen()) {
-        Update(fpsClock, fpsText);
+        Update(&taskScheduler,fpsClock, fpsText);
     }
 }
 
@@ -123,7 +132,14 @@ void Game::HandleInput()
     }
 }
 
-void Game::Update(sf::Clock &fpsClock, sf::Text &fpsText)
+void Game::FlyBird(ftl::TaskScheduler * taskScheduler, void * arg)
+{
+	(void)taskScheduler;
+	FlockBirdSet *flockSet = reinterpret_cast<FlockBirdSet *>(arg);
+	flockSet->flock->flocking(flockSet->index);
+}
+
+void Game::Update(ftl::TaskScheduler * scheduler, sf::Clock &fpsClock, sf::Text &fpsText)
 {
     window.clear();
 	HandleInput();
@@ -135,12 +151,46 @@ void Game::Update(sf::Clock &fpsClock, sf::Text &fpsText)
 	float drawBoidTime = inFrameClock.restart().asSeconds();
 
     // Applies the three rules to each boid in the flock and changes them accordingly.
-    flock.flocking();
+
+	//MainThreadFlocking();
+	JobFlocking(scheduler);
+
 	float flockTime = inFrameClock.restart().asSeconds();
 
 	DrawUI(fpsClock, fpsText, drawBoidTime, flockTime);
 
 	window.display();
+}
+
+void Game::MainThreadFlocking()
+{
+	for (int i = 0; i < kBoidNum; i++) {
+		flock.flocking(i);
+	}
+}
+
+void Game::JobFlocking(ftl::TaskScheduler * scheduler)
+{
+	window.setActive(false);
+
+	ftl::Task tasks[kBoidNum];
+	FlockBirdSet flockSet[kBoidNum];
+
+	for (int i = 0; i < kBoidNum; ++i)
+	{
+		FlockBirdSet *iFlockSet = &flockSet[i];
+
+		iFlockSet->flock = &flock;
+		iFlockSet->index = i;
+
+		tasks[i] = { FlyBird, iFlockSet };
+	}
+
+	ftl::TaskCounter counter(scheduler);
+	scheduler->AddTasks(kBoidNum, tasks, ftl::TaskPriority::Normal, &counter);
+	scheduler->WaitForCounter(&counter);
+
+	window.setActive(true);
 }
 
 void Game::DrawBoid()
