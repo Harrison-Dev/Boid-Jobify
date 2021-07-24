@@ -76,21 +76,6 @@ void Game::Run()
     }
 }
 
-void Game::DrawUI(sf::Clock &fpsClock, sf::Text &text, float drawBoidTime, float flockTime)
-{
-	float currentTime = fpsClock.restart().asSeconds();
-	float fps = 1 / currentTime;
-	text.setString("Frames per Second: " + to_string(int(fps + 0.5)));
-	text.setPosition(window_width - 230, 0);
-	window.draw(text);
-	text.setString("Draw Boid Time: " + to_string(drawBoidTime));
-	text.setPosition(window_width - 230, 20);
-	window.draw(text);
-	text.setString("Flocking Cal Time: " + to_string(flockTime));
-	text.setPosition(window_width - 230, 40);
-	window.draw(text);
-}
-
 void Game::HandleInput()
 {
     sf::Event event;
@@ -108,6 +93,8 @@ void Game::HandleInput()
             window.close();
         }
     }
+
+	return;
 
     // Check for mouse click, draws and adds boid to flock if so.
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
@@ -153,8 +140,10 @@ void Game::Update(ftl::TaskScheduler * scheduler, sf::Clock &fpsClock, sf::Text 
 
     // Applies the three rules to each boid in the flock and changes them accordingly.
 
-	//MainThreadFlocking();
-	JobFlocking(scheduler);
+	if(isJob)
+		JobFlocking(scheduler);
+	else
+		MainThreadFlocking();
 
 	float flockTime = inFrameClock.restart().asSeconds();
 
@@ -198,7 +187,6 @@ void Game::DrawBoid()
 {
 	for (int i = 0; i < shapes.size(); i++) 
 	{
-
 		// Matches up the location of the shape to the boid
 		shapes[i].setPosition(flock.getBoid(i).location.x, flock.getBoid(i).location.y);
 
@@ -225,4 +213,23 @@ void Game::DrawBoid()
 	{
 		window.draw(shapes[i]);
 	}
+}
+
+
+void Game::DrawUI(sf::Clock &fpsClock, sf::Text &text, float drawBoidTime, float flockTime)
+{
+	float currentTime = fpsClock.restart().asSeconds();
+	float fps = 1 / currentTime;
+	text.setString("Frames per Second: " + to_string(int(fps + 0.5)));
+	text.setPosition(window_width - 230, 0);
+	window.draw(text);
+	text.setString("Frames Time: " + to_string(currentTime));
+	text.setPosition(window_width - 230, 20);
+	window.draw(text);
+	text.setString("Draw Boid Time: " + to_string(drawBoidTime));
+	text.setPosition(window_width - 230, 40);
+	window.draw(text);
+	text.setString("Flocking Cal Time: " + to_string(flockTime));
+	text.setPosition(window_width - 230, 60);
+	window.draw(text);
 }
