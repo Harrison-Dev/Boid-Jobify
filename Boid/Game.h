@@ -25,17 +25,19 @@ private:
     float boidsSize;
     vector<sf::CircleShape> shapes;
 
-	inline void Update(ftl::TaskScheduler *scheduler, sf::Clock &clock, sf::Text &fpsText);
+	static inline void Render(Game* current, sf::RenderWindow* window,sf::Clock &clock, sf::Text &fpsText);
 	void MainThreadFlocking();
-	void JobFlocking(ftl::TaskScheduler * scheduler);
+	inline void JobFlocking(ftl::TaskScheduler * scheduler);
 	void DrawBoid();
     void HandleInput();
+	static void SetupRenderThread(Game* currentInstance);
 
 public:
     Game();
     void Run();
+	inline void Update(ftl::TaskScheduler &taskScheduler);
 	void DrawUI(sf::Clock &fpsClock, sf::Text &fpsText, float drawBoidTime, float flockTime);
-	static void FlyBird(ftl::TaskScheduler *taskScheduler, void *arg);
+	static void FlyBirdTask(ftl::TaskScheduler *taskScheduler, void *arg);
 };
 
 #endif
