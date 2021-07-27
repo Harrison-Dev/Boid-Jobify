@@ -22,6 +22,7 @@ private:
     int window_height;
 
     Flock flock;
+	Flock flockClone;
     float boidsSize;
     vector<sf::CircleShape> shapes;
 

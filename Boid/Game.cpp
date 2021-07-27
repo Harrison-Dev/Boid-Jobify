@@ -13,10 +13,13 @@ enum DemoType
 {
 	MainThreadOnly = 0,
 	MainThreadJobify = 1,
-	KickNowAndGatherLater = 2, // TODO : double buffering
+	KickNowAndGatherLater = 2,
+	DoubleBuffering = 3, // Fix kick now and gather later race condition
+	TimeSlicing = 4,
 };
 
 int m_demoType = KickNowAndGatherLater;
+const int kBoidNum = 1500;
 
 enum InframeState
 {
@@ -24,8 +27,6 @@ enum InframeState
 	LogicFin = 1,
 	RenderFin = 2,
 };
-
-const int kBoidNum = 1500;
 
 float m_flockingTime = 0;
 atomic<int> m_inFrameState = 0;
@@ -71,6 +72,7 @@ void Game::Run()
 	switch (m_demoType)
 	{
 		case KickNowAndGatherLater:
+		case DoubleBuffering:
 		{
 			// deactivate its OpenGL context
 			window.setActive(false);
@@ -150,7 +152,7 @@ void Game::SetupRenderThread(Game* currentInstance)
 
 void Game::Update(ftl::TaskScheduler &taskScheduler)
 {
-	if(m_demoType == KickNowAndGatherLater)
+	if(m_demoType == KickNowAndGatherLater || m_demoType == DoubleBuffering)
 		m_inFrameState = ReadyToNext;
 	
 	HandleInput();
@@ -168,14 +170,19 @@ void Game::Update(ftl::TaskScheduler &taskScheduler)
 			window.setActive(true);
 			break;
 		case KickNowAndGatherLater:
+		case DoubleBuffering:
 			JobFlocking(&taskScheduler);
 			break;
 	}
 
 	m_flockingTime = gameLogicClock.restart().asSeconds();
 
-	if (m_demoType == KickNowAndGatherLater)
+	if (m_demoType == KickNowAndGatherLater || m_demoType == DoubleBuffering)
 	{
+		if (m_demoType == DoubleBuffering)
+		{
+			flockClone = flock; // Deep copy flock for render
+		}
 		m_inFrameState = LogicFin;
 		while (m_inFrameState != RenderFin); // wait next state
 	}
@@ -269,7 +276,7 @@ void Game::Render(Game* current, sf::RenderWindow* window, sf::Clock &fpsClock, 
 	current->DrawBoid();
 	float drawBoidTime = renderClock.restart().asSeconds();
 
-	if (m_demoType == KickNowAndGatherLater)
+	if (m_demoType == KickNowAndGatherLater || m_demoType == DoubleBuffering)
 	{
 		while (m_inFrameState != LogicFin);// Wait logic frame
 		m_inFrameState = RenderFin;
@@ -281,13 +288,18 @@ void Game::Render(Game* current, sf::RenderWindow* window, sf::Clock &fpsClock, 
 
 void Game::DrawBoid()
 {
+	Flock renderFlock = (m_demoType == DoubleBuffering) ? flockClone : flock;
+
+	if (renderFlock.getSize() == 0)
+		return;
+
 	for (int i = 0; i < shapes.size(); i++) 
 	{
 		// Matches up the location of the shape to the boid
-		shapes[i].setPosition(flock.getBoid(i).location.x, flock.getBoid(i).location.y);
+		shapes[i].setPosition(renderFlock.getBoid(i).location.x, renderFlock.getBoid(i).location.y);
 
 		// Calculates the angle where the velocity is pointing so that the triangle turns towards it.
-		float theta = flock.getBoid(i).angle(flock.getBoid(i).velocity);
+		float theta = renderFlock.getBoid(i).angle(renderFlock.getBoid(i).velocity);
 		shapes[i].setRotation(theta);
 
 		// Prevent boids from moving off the screen through wrapping
