@@ -15,11 +15,15 @@ enum DemoType
 	MainThreadJobify = 1,
 	KickNowAndGatherLater = 2,
 	DoubleBuffering = 3, // Fix kick now and gather later race condition
-	TimeSlicing = 4,
 };
 
-int m_demoType = KickNowAndGatherLater;
-const int kBoidNum = 1500;
+bool m_isTimeSlice = true;
+
+int m_demoType = DoubleBuffering;
+const int kBoidNum = 2000;
+const int kFrameSlice = 500;
+
+const int kFrameSleepMs = 5;
 
 enum InframeState
 {
@@ -30,6 +34,9 @@ enum InframeState
 
 float m_flockingTime = 0;
 atomic<int> m_inFrameState = 0;
+
+int thisFrameStart = 0;
+int thisFrameEnd = kFrameSlice;
 
 struct FlockBirdSet {
 	FlockBirdSet() {}
@@ -184,7 +191,10 @@ void Game::Update(ftl::TaskScheduler &taskScheduler)
 			flockClone = flock; // Deep copy flock for render
 		}
 		m_inFrameState = LogicFin;
-		while (m_inFrameState != RenderFin); // wait next state
+		while (m_inFrameState != RenderFin)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(kFrameSleepMs));
+		}// wait next state
 	}
 }
 
@@ -241,21 +251,52 @@ void Game::MainThreadFlocking()
 
 void Game::JobFlocking(ftl::TaskScheduler * scheduler)
 {
+	int frameStart, frameEnd;
+	if (m_isTimeSlice)
+	{
+		frameStart = thisFrameStart;
+		frameEnd = thisFrameEnd;
+		frameStart += kFrameSlice;
+		frameEnd += kFrameSlice;
+		if (frameStart > kBoidNum)
+		{
+			frameStart -= kBoidNum;
+		}
+		if (frameEnd > kBoidNum)
+		{
+			frameEnd -= kBoidNum;
+		}
+		if (frameStart > frameEnd)
+		{
+			frameStart = 0;
+			frameEnd = kFrameSlice;
+		}
+		thisFrameStart = frameStart;
+		thisFrameEnd = frameEnd;
+	}
+	else
+	{
+		frameStart = 0;
+		frameEnd = kBoidNum;
+	}
+
 	ftl::Task tasks[kBoidNum];
 	FlockBirdSet flockSet[kBoidNum];
 
-	for (int i = 0; i < kBoidNum; ++i)
+	int frameDiff = frameEnd - frameStart;
+	for (int i = frameStart; i < frameEnd; ++i)
 	{
-		FlockBirdSet *iFlockSet = &flockSet[i];
+		int moveIndex = i - frameStart;
+		FlockBirdSet *iFlockSet = &flockSet[moveIndex];
 
 		iFlockSet->flock = &flock;
 		iFlockSet->index = i;
 
-		tasks[i] = { FlyBirdTask, iFlockSet };
+		tasks[moveIndex] = { FlyBirdTask, iFlockSet };
 	}
 
 	ftl::TaskCounter counter(scheduler);
-	scheduler->AddTasks(kBoidNum, tasks, ftl::TaskPriority::Normal, &counter);
+	scheduler->AddTasks(frameDiff, tasks, ftl::TaskPriority::Normal, &counter);
 	scheduler->WaitForCounter(&counter);
 }
 
@@ -278,7 +319,8 @@ void Game::Render(Game* current, sf::RenderWindow* window, sf::Clock &fpsClock, 
 
 	if (m_demoType == KickNowAndGatherLater || m_demoType == DoubleBuffering)
 	{
-		while (m_inFrameState != LogicFin);// Wait logic frame
+		while (m_inFrameState != LogicFin)
+			std::this_thread::sleep_for(std::chrono::milliseconds(kFrameSleepMs)); // Wait logic frame
 		m_inFrameState = RenderFin;
 	}
 
