@@ -17,13 +17,11 @@ enum DemoType
 	DoubleBuffering = 3, // Fix kick now and gather later race condition
 };
 
-bool m_isTimeSlice = true;
-
 int m_demoType = DoubleBuffering;
+
+bool m_isTimeSlice = false;
 const int kBoidNum = 2000;
 const int kFrameSlice = 500;
-
-const int kFrameSleepMs = 5;
 
 enum InframeState
 {
@@ -193,7 +191,7 @@ void Game::Update(ftl::TaskScheduler &taskScheduler)
 		m_inFrameState = LogicFin;
 		while (m_inFrameState != RenderFin)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(kFrameSleepMs));
+			std::this_thread::yield();
 		}// wait next state
 	}
 }
@@ -320,7 +318,7 @@ void Game::Render(Game* current, sf::RenderWindow* window, sf::Clock &fpsClock, 
 	if (m_demoType == KickNowAndGatherLater || m_demoType == DoubleBuffering)
 	{
 		while (m_inFrameState != LogicFin)
-			std::this_thread::sleep_for(std::chrono::milliseconds(kFrameSleepMs)); // Wait logic frame
+			std::this_thread::yield(); // Wait logic frame
 		m_inFrameState = RenderFin;
 	}
 
